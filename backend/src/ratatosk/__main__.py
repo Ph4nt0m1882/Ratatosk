@@ -9,4 +9,5 @@ def main() -> None:
         reload=True,
     )
 
-main()
+if __name__ == "__main__":
+    main()

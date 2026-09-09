@@ -10,6 +10,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.141.1",
+    "google-genai>=2.22.0",
     "pydantic-settings>=2.15.0",
     "scalar-fastapi>=1.9.0",
     "sse-starlette>=3.4.11",
@@ -17,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ratatosk = "ratatosk:main"
+ratatosk = "ratatosk.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]

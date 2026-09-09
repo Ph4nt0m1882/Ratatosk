@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 from ratatosk.api.routes import system
+from ratatosk.api.routes.chat import chat as chat_routes
 from ratatosk.core.config import settings
 
 @asynccontextmanager
@@ -38,4 +39,5 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(system.router, tags=["System"])
+    app.include_router(chat_routes.router)
     return app

@@ -1,0 +1,14 @@
+{
+  "@@locale": "fr",
+  "appName": "Ratatosk",
+  "appTagline": "Orchestrateur universel d'IA",
+  "settings": "Paramètres",
+  "theme": "Thème",
+  "darkTheme": "Sombre",
+  "lightTheme": "Clair",
+  "systemTheme": "Système",
+  "language": "Langue",
+  "chatTitle": "Discussion",
+  "typeMessage": "Écrivez un message...",
+  "send": "Envoyer"
+}

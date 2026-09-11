@@ -1,0 +1,14 @@
+{
+  "@@locale": "en",
+  "appName": "Ratatosk",
+  "appTagline": "Universal AI Orchestrator",
+  "settings": "Settings",
+  "theme": "Theme",
+  "darkTheme": "Dark",
+  "lightTheme": "Light",
+  "systemTheme": "System",
+  "language": "Language",
+  "chatTitle": "Chat",
+  "typeMessage": "Type a message...",
+  "send": "Send"
+}

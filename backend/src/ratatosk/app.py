@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
 
 from ratatosk.core.config import settings
+from ratatosk.endpoints.chat.router import router as chat_router
 from ratatosk.endpoints.health.router import router as health_router
 
 app = FastAPI(
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(chat_router)
 
 
 @app.get("/", include_in_schema=False)

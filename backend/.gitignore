@@ -10,3 +10,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Jupyter Notebook for testing
+*.ipynb*

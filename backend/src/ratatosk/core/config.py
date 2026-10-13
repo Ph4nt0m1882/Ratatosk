@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     # list of different AI API key
     google_api_key: str = ""
 
+    # path or url to the database
+    database_url: str = ""
+
+    @property
+    def resolved_database_url(self) -> str:
+        if self.database_url:
+            return self.database_url
+        return f"sqlite+aiosqlite:///{self.app_dir}/ratatosk.db"
+
     @property
     def cache_dir(self) -> Path:
         path = self.app_dir / "cache"

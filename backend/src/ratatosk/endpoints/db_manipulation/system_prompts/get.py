@@ -1,9 +1,10 @@
 from fastapi import HTTPException
-from ratatosk.db.models import SystemPrompt
-from ratatosk.db.session import async_session_maker
 from sqlalchemy import select
 
-from ..models import SystemPromptContent, SystemPromptRequest
+from ratatosk.db.models import SystemPrompt
+from ratatosk.db.session import async_session_maker
+
+from .models import SystemPromptContent, SystemPromptRequest
 
 
 async def get_system_prompts(filter: SystemPromptRequest) -> SystemPromptContent:

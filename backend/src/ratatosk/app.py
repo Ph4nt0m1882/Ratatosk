@@ -3,14 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scalar_fastapi import get_scalar_api_reference
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 import ratatosk.db.models  # noqa: F401 - Save the models to ensure they are registered with SQLAlchemy
 from ratatosk.core.config import settings
 from ratatosk.db.base import Base
-from ratatosk.db.models.prompts import SystemPrompt
-from ratatosk.db.seeds import get_default_prompts
+from ratatosk.db.models import SystemPrompt, User
+from ratatosk.db.seeds import create_admin_user, get_default_prompts
 from ratatosk.db.session import async_session_maker, engine
+from ratatosk.endpoints.auth.router import router as auth_router
 from ratatosk.endpoints.chat.router import router as chat_router
 from ratatosk.endpoints.db_manipulation.router import router as db_router
 from ratatosk.endpoints.health.router import router as health_router
@@ -23,13 +24,22 @@ async def lifespan(app: FastAPI):
 
     # if table system_prompts is avoid, re-apply default sys prompts
     async with async_session_maker() as session:
-        result = await session.execute(select(func.count()).select_from(SystemPrompt))
-        if result.scalar() == 0:
+        result = await session.execute(select(SystemPrompt.id).limit(1))
+        if result.scalar_one_or_none() is None:
             session.add_all(get_default_prompts())
             await session.commit()
 
-    await engine.dispose()
+        result = await session.execute(
+            select(User.id).where(User.is_admin == True).limit(1)
+        )
+        if result.scalar_one_or_none() is None:
+            session.add(
+                create_admin_user(settings.admin_username, settings.admin_password)
+            )
+            await session.commit()
+
     yield
+    await engine.dispose()
 
 
 app = FastAPI(
@@ -48,6 +58,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(db_router)
 

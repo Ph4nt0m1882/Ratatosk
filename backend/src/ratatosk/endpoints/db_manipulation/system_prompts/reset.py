@@ -1,11 +1,12 @@
 from fastapi import HTTPException
+from sqlalchemy import delete, select
+
 from ratatosk.db.models import SystemPrompt
 from ratatosk.db.seeds import get_default_prompts
 from ratatosk.db.session import async_session_maker
-from sqlalchemy import delete, select
 
-from ..models import SystemPromptContent, SystemPromptMetadata
 from .list import requests_system_prompts
+from .models import SystemPromptContent, SystemPromptMetadata
 
 
 async def reset_system_prompt(id: str) -> SystemPromptContent:

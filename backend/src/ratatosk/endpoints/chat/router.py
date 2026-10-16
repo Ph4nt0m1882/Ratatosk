@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+
+from ratatosk.core.security import get_current_user
 from ratatosk.providers import provider
 
 from .models import ChatRequest
@@ -7,6 +9,7 @@ from .models import ChatRequest
 router = APIRouter(
     prefix="/chat",
     tags=["chat"],
+    dependencies=[Depends(get_current_user)],
 )
 
 

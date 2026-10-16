@@ -1,7 +1,7 @@
 from ratatosk.db.models import SystemPrompt
 from ratatosk.db.session import async_session_maker
 
-from ..models import SystemPromptContent, SystemPromptCreate
+from .models import SystemPromptContent, SystemPromptCreate
 
 
 async def add_new_system_prompts(data: SystemPromptCreate) -> SystemPromptContent:

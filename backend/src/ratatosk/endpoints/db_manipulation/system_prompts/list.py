@@ -1,8 +1,9 @@
-from ratatosk.db.models import SystemPrompt
-from ratatosk.db.session import async_session_maker
 from sqlalchemy import select
 
-from ..models import SystemPromptMetadata
+from ratatosk.db.models import SystemPrompt
+from ratatosk.db.session import async_session_maker
+
+from .models import SystemPromptMetadata
 
 
 async def requests_system_prompts(

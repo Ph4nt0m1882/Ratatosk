@@ -1,9 +1,12 @@
 from pathlib import Path
 
 import yaml
-from ratatosk.db.models import SystemPrompt
+
+from ratatosk.core.security import PH
+from ratatosk.db.models import SystemPrompt, User
 
 PROMPTS_DIR = Path(__file__).resolve().parents[3] / "assets" / "prompts"
+
 
 #   --------------------------   #
 #                                #
@@ -37,3 +40,22 @@ def get_default_prompts() -> list[SystemPrompt]:
             )
 
     return prompts
+
+
+#   -------------------------   #
+#                               #
+#   Set default admin account   #
+#                               #
+#   -------------------------   #
+
+
+def create_admin_user(
+    default_username: str = "ratatosk", default_password: str = "change_me"
+) -> User:
+    """create the default admin user, for the first connection"""
+
+    return User(
+        username=default_username,  # default username : appname
+        hashed_password=PH.hash(default_password),
+        is_admin=True,
+    )

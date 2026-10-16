@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from ratatosk.core.security import get_current_user
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -11,7 +13,7 @@ def health():
     }
 
 
-@router.get("/ready")
+@router.get("/ready", dependencies=[Depends(get_current_user)])
 def readiness():
     return {
         "status_api": "ok",

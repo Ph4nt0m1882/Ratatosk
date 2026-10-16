@@ -1,7 +1,8 @@
 from fastapi import HTTPException
+from sqlalchemy import select
+
 from ratatosk.db.models import SystemPrompt
 from ratatosk.db.session import async_session_maker
-from sqlalchemy import select
 
 
 async def remove_system_prompts(id: str):

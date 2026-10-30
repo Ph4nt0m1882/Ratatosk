@@ -204,9 +204,11 @@ entity "USER_FACT" as user_fact {
 entity "CONVERSATION" as conv {
     * **id** : uuid <<PK>>
     --
-    title : varchar(255)
+    * title : varchar(255)
+    * title_auto : boolean
+    * archived : boolean
     ai_notes : text
-    analyzed_at : timestamptz
+    * analyzed_at : timestamptz
     * created_at : timestamptz
     * updated_at : timestamptz
 }
@@ -219,6 +221,7 @@ entity "MESSAGE" as msg {
     content : text
     parts : jsonb
     token_count : integer
+    cost : float
     * created_at : timestamptz
 }
 

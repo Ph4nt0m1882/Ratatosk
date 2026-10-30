@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 15
 
+    currency: str = "USD"
+
     @property
     def resolved_database_url(self) -> str:
         if self.database_url:

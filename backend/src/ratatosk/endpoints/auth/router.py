@@ -91,7 +91,7 @@ async def refresh_device_session(
     )
     user_session = result.scalar_one_or_none()
 
-    user = await session.get(User, user_session.user_id) if user_session else None
+    user = await User.get_by_id(user_session.user_id) if user_session else None
     if (
         not user_session
         or not user

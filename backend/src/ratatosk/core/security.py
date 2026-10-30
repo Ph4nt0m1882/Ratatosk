@@ -6,11 +6,9 @@ from argon2 import PasswordHasher
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ratatosk.core.config import settings
 from ratatosk.db.models import User
-from ratatosk.db.session import get_db
 
 PH = PasswordHasher()
 FERNET = Fernet(
@@ -29,7 +27,6 @@ def create_access_token(user_id: str) -> str:
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     try:
         user_id = FERNET.decrypt(
@@ -42,7 +39,7 @@ async def get_current_user(
             detail="Invalid or expired token",
         )
 
-    user = await session.get(User, user_id)
+    user = await User.get_by_id(user_id)
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

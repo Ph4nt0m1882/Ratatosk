@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 
 from ratatosk.providers.google import GoogleProvider
-from ratatosk.providers.provider import BaseProvider
+from ratatosk.providers.provider import BaseProvider, EcoMode, HistoryMode
 from ratatosk.providers.schemas import ModelInfo
 
 
@@ -60,21 +60,44 @@ class RatatoskProvider(BaseProvider):
         self,
         model: str,
         messages: list[dict[str, str]],
+        user_id: str | None = None,
+        conversation_id: str | None = None,
+        history_mode: HistoryMode = EcoMode(),
         temperature: float = 0.7,
-        system_prompt: str | None = None,
     ) -> AsyncIterator[str]:
         """automatically route the chat request to the appropriate subprovider based on the model."""
-        if not self._models_cache:
+        target_provider, clean_model = await self._get_provider_for_model(model)
+        async for chunk in target_provider.chat_stream(
+            model=clean_model,
+            messages=messages,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            history_mode=history_mode,
+            temperature=temperature,
+        ):
+            yield chunk
+
+    async def calcul_price(
+        self, model: str, token: int, is_input: bool = True
+    ) -> float:
+        target_provider, clean_model = await self._get_provider_for_model(model)
+        return await target_provider.calcul_price(clean_model, token, is_input)
+
+    async def _get_provider_for_model(self, model: str) -> tuple[BaseProvider, str]:
+        """Route a model ID (or 'provider/model') to its BaseProvider in O(1)."""
+
+        if "/" in model:
+            provider, clean_model = model.split("/", 1)
+            for sub_p in self._subproviders:
+                if sub_p.provider_id == provider or sub_p.display_name == provider:
+                    return sub_p, clean_model
+
+        if model not in self._models_cache:
             await self.list_models()
+
         target_provider = self._models_cache.get(model)
         if not target_provider:
             raise ValueError(
                 f"Model '{model}' unknown or no available provider to handle it."
             )
-        async for chunk in target_provider.chat_stream(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            system_prompt=system_prompt,
-        ):
-            yield chunk
+        return target_provider, model

@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = False
 
+    agent_name: str = "Ratatosk"
+
     # list of different AI API key
     google_api_key: str = ""
 

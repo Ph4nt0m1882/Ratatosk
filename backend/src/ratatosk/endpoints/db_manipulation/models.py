@@ -1,3 +1,11 @@
+from .conversations.models import (
+    ConversationManager,
+    ConversationMetadata,
+    ConversationUpdate,
+    MessageData,
+    MessagesRequest,
+    RefMessage,
+)
 from .system_prompts.models import (
     SystemPromptBase,
     SystemPromptContent,
@@ -15,6 +23,12 @@ from .users.models import (
 )
 
 __all__ = [
+    "ConversationManager",
+    "ConversationMetadata",
+    "ConversationUpdate",
+    "MessageData",
+    "MessagesRequest",
+    "RefMessage",
     "SystemPromptBase",
     "SystemPromptContent",
     "SystemPromptCreate",

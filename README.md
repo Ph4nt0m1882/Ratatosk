@@ -207,6 +207,7 @@ entity "CONVERSATION" as conv {
     * title : varchar(255)
     * title_auto : boolean
     * archived : boolean
+    cache_anchor : varchar(36)
     ai_notes : text
     * analyzed_at : timestamptz
     * created_at : timestamptz

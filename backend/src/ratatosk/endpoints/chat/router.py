@@ -1,10 +1,11 @@
+from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException
+from sse_starlette.sse import EventSourceResponse
 
 from ratatosk.core.security import get_current_user
-from ratatosk.db.models import User
+from ratatosk.db.models import Conversation, User
 from ratatosk.providers import provider
 
 from .models import ChatRequest
@@ -36,13 +37,28 @@ async def get_models_by_id(provider_id: str | None = None):
 async def chat(
     request: ChatRequest,
     user: Annotated[User, Depends(get_current_user)],
-):
-    return StreamingResponse(
-        provider.chat_stream(
+) -> EventSourceResponse:
+    if request.conversation_id is not None:
+        conv = await Conversation.get_by_id(request.conversation_id)
+        if conv is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        if conv.user_id != user.id and not user.is_admin:
+            raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    try:
+        await provider._get_provider_for_model(request.model)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    async def _sse_generator() -> AsyncIterator[dict[str, str]]:
+        async for event in provider.chat_stream(
             model=request.model,
             messages=[m.model_dump() for m in request.messages],
             user_id=user.id,
             conversation_id=request.conversation_id,
-        ),
-        media_type="text/event-stream",
-    )
+            history_mode=request.resolve_history_mode(),
+            temperature=request.temperature,
+        ):
+            yield {"event": event.type, "data": event.model_dump_json()}
+
+    return EventSourceResponse(_sse_generator())

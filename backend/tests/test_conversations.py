@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy import event
 
 from ratatosk.app import app
-from ratatosk.core.config import settings
+from ratatosk.core.dynamic_settings import DynamicSettingsUpdate, dynamic_settings
 from ratatosk.core.security import create_access_token
 from ratatosk.db.base import Base
 from ratatosk.db.history import (
@@ -571,8 +571,8 @@ class TestConversationsSuite(unittest.IsolatedAsyncioTestCase):
             session.add(rich_msg)
             await session.commit()
 
-        old_name = settings.agent_name
-        settings.agent_name = "CustomRatatosk"
+        old_name = dynamic_settings.agent_name
+        dynamic_settings.update(DynamicSettingsUpdate(agent_name="CustomRatatosk"))
         try:
             r = await self.client.get(
                 "/db/conversations/export",
@@ -580,7 +580,7 @@ class TestConversationsSuite(unittest.IsolatedAsyncioTestCase):
                 headers=self.alice_headers,
             )
         finally:
-            settings.agent_name = old_name
+            dynamic_settings.update(DynamicSettingsUpdate(agent_name=old_name))
 
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.headers["content-type"].startswith("text/markdown"))

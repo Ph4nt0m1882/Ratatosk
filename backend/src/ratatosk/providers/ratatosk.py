@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 
 from ratatosk.providers.google import GoogleProvider
 from ratatosk.providers.provider import BaseProvider, EcoMode, HistoryMode
-from ratatosk.providers.schemas import ModelInfo
+from ratatosk.providers.schemas import ModelInfo, StreamEvent
 
 
 class RatatoskProvider(BaseProvider):
@@ -64,10 +64,10 @@ class RatatoskProvider(BaseProvider):
         conversation_id: str | None = None,
         history_mode: HistoryMode = EcoMode(),
         temperature: float = 0.7,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[StreamEvent]:
         """automatically route the chat request to the appropriate subprovider based on the model."""
         target_provider, clean_model = await self._get_provider_for_model(model)
-        async for chunk in target_provider.chat_stream(
+        async for event in target_provider.chat_stream(
             model=clean_model,
             messages=messages,
             user_id=user_id,
@@ -75,7 +75,7 @@ class RatatoskProvider(BaseProvider):
             history_mode=history_mode,
             temperature=temperature,
         ):
-            yield chunk
+            yield event
 
     async def calcul_price(
         self, model: str, token: int, is_input: bool = True

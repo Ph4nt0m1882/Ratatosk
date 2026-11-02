@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ratatosk.core.config import settings
+from ratatosk.core.dynamic_settings import dynamic_settings
 from ratatosk.core.security import (
     PH,
     create_access_token,
@@ -59,7 +59,7 @@ async def login(
                 device_name=device_name,
                 token_hash=hash_token(refresh_token),
                 expires_at=datetime.now(UTC)
-                + timedelta(days=settings.refresh_token_expire_days),
+                + timedelta(days=dynamic_settings.refresh_token_expire_days),
             )
         )
         await session.commit()
@@ -109,7 +109,7 @@ async def refresh_device_session(
     new_refresh_token = secrets.token_urlsafe(32)
     user_session.token_hash = hash_token(new_refresh_token)
     user_session.expires_at = datetime.now(UTC) + timedelta(
-        days=settings.refresh_token_expire_days
+        days=dynamic_settings.refresh_token_expire_days
     )
     await session.commit()
 

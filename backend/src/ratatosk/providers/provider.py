@@ -10,6 +10,7 @@ from ratatosk.db.history import (
     get_history_since_analysis,
 )
 from ratatosk.db.models import Conversation
+from ratatosk.providers.schemas import StreamEvent
 
 
 @dataclass(frozen=True)
@@ -61,8 +62,8 @@ class BaseProvider(ABC):
         conversation_id: str | None = None,
         history_mode: HistoryMode = EcoMode(),
         temperature: float = 0.7,
-    ) -> AsyncIterator[str]:
-        """Stream chat responses from the provider."""
+    ) -> AsyncIterator[StreamEvent]:
+        """Stream structured chat events from the provider."""
 
     @abstractmethod
     async def calcul_price(

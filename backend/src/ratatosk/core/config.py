@@ -31,8 +31,6 @@ class Settings(BaseSettings):
     port: int = 8000
     debug: bool = False
 
-    agent_name: str = "Ratatosk"
-
     # list of different AI API key
     google_api_key: str = ""
 
@@ -45,10 +43,6 @@ class Settings(BaseSettings):
 
     # authentication
     secret_key: str = "change-me-secret-key"
-    access_token_expire_minutes: int = 15
-    refresh_token_expire_days: int = 15
-
-    currency: str = "USD"
 
     @property
     def resolved_database_url(self) -> str:
@@ -61,6 +55,16 @@ class Settings(BaseSettings):
         path = self.app_dir / "cache"
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    @property
+    def attachments_dir(self) -> Path:
+        path = self.app_dir / "attachments"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
+    def settings_file(self) -> Path:
+        return self.app_dir / "settings.json"
 
     model_config = SettingsConfigDict(
         env_file=".env",

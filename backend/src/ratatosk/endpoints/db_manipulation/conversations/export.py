@@ -8,7 +8,7 @@ from urllib.parse import quote
 from fastapi import HTTPException, Response
 from sqlalchemy import select
 
-from ratatosk.core.config import settings
+from ratatosk.core.dynamic_settings import dynamic_settings
 from ratatosk.db.models import Conversation, Message, User
 from ratatosk.db.session import async_session_maker
 
@@ -112,7 +112,7 @@ def _render_conversation_markdown(
             header = f"### 👤 {owner_username} · *{timestamp}*"
         elif msg.role in ("assistant", "model"):
             header = (
-                f"### 🤖 {settings.agent_name} (`{msg.model}`) · *{timestamp}*"
+                f"### 🤖 {dynamic_settings.agent_name} (`{msg.model}`) · *{timestamp}*"
             )
         else:
             header = f"### ⚙️ {msg.role} · *{timestamp}*"

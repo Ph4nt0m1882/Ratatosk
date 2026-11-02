@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import httpx
 
 from ratatosk.core.config import settings
+from ratatosk.core.dynamic_settings import dynamic_settings
 
 
 class CurrencyManager:
@@ -29,7 +30,7 @@ class CurrencyManager:
         return price_usd * rate
 
     def auto_convert(self, price_usd: float) -> float:
-        return self.convert(price_usd, settings.currency)
+        return self.convert(price_usd, dynamic_settings.currency)
 
     def load_converter_reference(self, force_update: bool = False) -> dict:
         cache_file = settings.app_dir / "ExchangeRate.json"

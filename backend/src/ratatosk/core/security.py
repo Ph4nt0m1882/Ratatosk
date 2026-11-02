@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from ratatosk.core.config import settings
+from ratatosk.core.dynamic_settings import dynamic_settings
 from ratatosk.db.models import User
 
 PH = PasswordHasher()
@@ -31,7 +32,7 @@ async def get_current_user(
     try:
         user_id = FERNET.decrypt(
             token.encode(),
-            ttl=settings.access_token_expire_minutes * 60,
+            ttl=dynamic_settings.access_token_expire_minutes * 60,
         ).decode()
     except InvalidToken:
         raise HTTPException(

@@ -229,10 +229,14 @@ entity "MESSAGE" as msg {
 entity "ATTACHMENT" as attach {
     * **id** : uuid <<PK>>
     --
-    * filename : varchar(255)
-    * mime_type : varchar(100)
-    * file_path : text
-    * file_size : integer
+    * source : varchar(100)
+    file_hash : varchar(64)
+    * mime_type : varchar(255)
+    file_path : text
+    external_uri : text
+    * file_size : bigint
+    width : integer
+    height : integer
     description : text
     * is_generated : boolean
     expires_at : timestamptz
@@ -347,6 +351,7 @@ class "UPLOADS / GENERATES" as rel_uploads <<Association>> {
 }
 
 class "REFERENCES" as rel_references <<Association>> {
+    * filename : varchar(255)
 }
 
 class "INDEXES" as rel_indexes <<Association>> {
@@ -394,7 +399,7 @@ conv "0,n" -- rel_contains
 rel_contains -- "1,1" msg
 
 user "0,n" -- rel_uploads
-rel_uploads -- "1,1" attach
+rel_uploads -- "0,1" attach
 
 msg "0,n" -- rel_references
 rel_references -- "0,n" attach

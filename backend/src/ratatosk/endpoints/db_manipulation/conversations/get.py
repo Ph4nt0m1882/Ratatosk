@@ -1,10 +1,22 @@
 from fastapi import HTTPException
 from sqlalchemy import func, or_, select
 
-from ratatosk.db.models import Conversation, Message, User
+from ratatosk.db.models import (
+    Attachment,
+    Conversation,
+    Message,
+    MessageAttachment,
+    User,
+)
 from ratatosk.db.session import async_session_maker
 
-from .models import ConversationManager, MessageData, MessagesRequest, RefMessage
+from .models import (
+    ConversationManager,
+    MessageAttachmentData,
+    MessageData,
+    MessagesRequest,
+    RefMessage,
+)
 
 
 async def _get_authorized_conversation(conversation_id: str, user: User) -> Conversation:
@@ -135,4 +147,37 @@ async def get_messages_list(
         stmt = stmt.order_by(numbered.c.idx.asc())
         rows = (await session.execute(stmt)).mappings().all()
 
-    return [MessageData.model_validate(row) for row in rows]
+        attachments_by_msg: dict[str, list[MessageAttachmentData]] = {}
+        if rows:
+            msg_ids = [r["id"] for r in rows]
+            att_rows = (
+                await session.execute(
+                    select(
+                        MessageAttachment.message_id,
+                        MessageAttachment.filename,
+                        Attachment,
+                    )
+                    .join(Attachment, Attachment.id == MessageAttachment.attachment_id)
+                    .where(MessageAttachment.message_id.in_(msg_ids))
+                )
+            ).all()
+            for msg_id, filename, att in att_rows:
+                attachments_by_msg.setdefault(msg_id, []).append(
+                    MessageAttachmentData(
+                        id=att.id,
+                        filename=filename,
+                        mime_type=att.mime_type,
+                        size=att.file_size,
+                        width=att.width,
+                        height=att.height,
+                        is_generated=att.is_generated,
+                        source=att.source,
+                    )
+                )
+
+    return [
+        MessageData.model_validate(
+            {**dict(row), "attachments": attachments_by_msg.get(row["id"], [])}
+        )
+        for row in rows
+    ]

@@ -41,6 +41,24 @@ class FixedMode:
 type HistoryMode = EcoMode | AutoMode | FullMode | NoneMode | FixedMode
 
 
+@dataclass(frozen=True)
+class NoSearchMode:
+    pass
+
+
+@dataclass(frozen=True)
+class StandardSearchMode:
+    pass
+
+
+@dataclass(frozen=True)
+class FullSearchMode:
+    pass
+
+
+type SearchMode = NoSearchMode | StandardSearchMode | FullSearchMode
+
+
 class BaseProvider(ABC):
     provider_id: str  # e.g., "openai", "anthropic", "google"
     display_name: str  # e.g., "OpenAI", "Anthropic", "Google"
@@ -59,9 +77,13 @@ class BaseProvider(ABC):
         model: str,
         messages: list[dict[str, str]],
         user_id: str | None = None,
+        is_admin: bool = False,
         conversation_id: str | None = None,
         history_mode: HistoryMode = EcoMode(),
+        search_mode: SearchMode = StandardSearchMode(),
         temperature: float = 0.7,
+        enable_builtin_tools: bool = True,
+        unlocked_tools: list[str] | None = None,
     ) -> AsyncIterator[StreamEvent]:
         """Stream structured chat events from the provider."""
 

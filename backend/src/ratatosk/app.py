@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 import ratatosk.db.models  # noqa: F401 - Save the models to ensure they are registered with SQLAlchemy
 from ratatosk.core.config import settings
+from ratatosk.core.idle_worker import IdleTrackingMiddleware, idle_worker
 from ratatosk.db.base import Base
 from ratatosk.db.models import SystemPrompt, User
 from ratatosk.db.seeds import create_admin_user, get_default_prompts
@@ -39,7 +40,9 @@ async def lifespan(app: FastAPI):
             )
             await session.commit()
 
+    idle_worker.start()
     yield
+    await idle_worker.stop()
     await engine.dispose()
 
 
@@ -50,12 +53,19 @@ app = FastAPI(
     docs_url=None,
 )
 
+app.add_middleware(IdleTrackingMiddleware, worker=idle_worker)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[
+        "X-Attachment-Complete",
+        "X-Original-Mime-Type",
+        "X-Preview-Kind",
+        "Content-Disposition",
+    ],
 )
 
 app.include_router(health_router)

@@ -4,7 +4,7 @@ from sqlalchemy.orm import aliased
 
 from ratatosk.db.session import async_session_maker
 
-from .models import Conversation, Message
+from .models import Attachment, Conversation, Message, MessageAttachment
 
 
 async def get_history_by_token(conversation_id: str, nb_token: int) -> list[Message]:
@@ -89,6 +89,7 @@ async def save_message(
     parts: list[dict] | None = None,
     token_count: int | None = None,
     cost: float | None = None,
+    attachments: list[dict[str, str]] | None = None,
 ) -> tuple[str, str]:
     async with async_session_maker() as session:
         if conversation_id is None:
@@ -104,6 +105,39 @@ async def save_message(
             cost=cost,
         )
         session.add(message)
+
+        if attachments:
+            await session.flush()
+            dedup_filenames: dict[str, str] = {}
+            for item in attachments:
+                att_id = item.get("id") or item.get("attachment_id")
+                if att_id:
+                    dedup_filenames[att_id] = item.get("filename") or "attachment"
+
+            if dedup_filenames:
+                rows = (
+                    (
+                        await session.execute(
+                            select(Attachment).where(
+                                Attachment.id.in_(dedup_filenames.keys()),
+                                (Attachment.user_id == user_id)
+                                | Attachment.user_id.is_(None),
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                for att in rows:
+                    att.expires_at = None
+                    session.add(
+                        MessageAttachment(
+                            message_id=message.id,
+                            attachment_id=att.id,
+                            filename=dedup_filenames[att.id][:255],
+                        )
+                    )
+
         await session.commit()
         await session.refresh(message)
 

@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     def settings_file(self) -> Path:
         return self.app_dir / "settings.json"
 
+    @property
+    def stats_file(self) -> Path:
+        return self.app_dir / "stats.json"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

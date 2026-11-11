@@ -36,12 +36,24 @@ class MessagesRequest(BaseModel):
     ref_message_id: str | None = None
 
 
+class MessageAttachmentData(BaseModel):
+    id: str
+    filename: str
+    mime_type: str
+    size: int
+    width: int | None = None
+    height: int | None = None
+    is_generated: bool = False
+    source: str = "upload"
+
+
 class MessageData(BaseModel):
     id: str
     role: str
     model: str
     content: str
     parts: list[dict] | None = None
+    attachments: list[MessageAttachmentData] = Field(default_factory=list)
     token_count: int | None = None
     cost: float | None = None
     is_first: bool = False  # when it's the first message of the conversation

@@ -1,7 +1,13 @@
 from collections.abc import AsyncIterator
 
 from ratatosk.providers.google import GoogleProvider
-from ratatosk.providers.provider import BaseProvider, EcoMode, HistoryMode
+from ratatosk.providers.provider import (
+    BaseProvider,
+    EcoMode,
+    HistoryMode,
+    SearchMode,
+    StandardSearchMode,
+)
 from ratatosk.providers.schemas import ModelInfo, StreamEvent
 
 
@@ -32,6 +38,14 @@ class RatatoskProvider(BaseProvider):
             )
 
             for m in models_iterable:
+                raw_desc = m.get("description")
+                if isinstance(raw_desc, dict):
+                    desc_str = raw_desc.get("en") or raw_desc.get("fr")
+                elif isinstance(raw_desc, str):
+                    desc_str = raw_desc
+                else:
+                    desc_str = None
+
                 model_info = ModelInfo(
                     id=m["id"],
                     provider=sub_p.provider_id,
@@ -42,6 +56,8 @@ class RatatoskProvider(BaseProvider):
                     if "limits" in m
                     else m.get("context_window"),
                     is_recommended=m.get("is_recommended", False),
+                    description=desc_str,
+                    rank=int(m.get("rank", 999)),
                 )
                 unified_list.append(model_info)
                 self._models_cache[model_info.id] = sub_p
@@ -61,9 +77,13 @@ class RatatoskProvider(BaseProvider):
         model: str,
         messages: list[dict[str, str]],
         user_id: str | None = None,
+        is_admin: bool = False,
         conversation_id: str | None = None,
         history_mode: HistoryMode = EcoMode(),
+        search_mode: SearchMode = StandardSearchMode(),
         temperature: float = 0.7,
+        enable_builtin_tools: bool = True,
+        unlocked_tools: list[str] | None = None,
     ) -> AsyncIterator[StreamEvent]:
         """automatically route the chat request to the appropriate subprovider based on the model."""
         target_provider, clean_model = await self._get_provider_for_model(model)
@@ -71,9 +91,13 @@ class RatatoskProvider(BaseProvider):
             model=clean_model,
             messages=messages,
             user_id=user_id,
+            is_admin=is_admin,
             conversation_id=conversation_id,
             history_mode=history_mode,
+            search_mode=search_mode,
             temperature=temperature,
+            enable_builtin_tools=enable_builtin_tools,
+            unlocked_tools=unlocked_tools,
         ):
             yield event
 

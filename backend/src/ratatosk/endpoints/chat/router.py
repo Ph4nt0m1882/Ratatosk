@@ -55,9 +55,13 @@ async def chat(
             model=request.model,
             messages=[m.model_dump() for m in request.messages],
             user_id=user.id,
+            is_admin=user.is_admin,
             conversation_id=request.conversation_id,
             history_mode=request.resolve_history_mode(),
+            search_mode=request.resolve_search_mode(),
             temperature=request.temperature,
+            enable_builtin_tools=request.enable_builtin_tools,
+            unlocked_tools=request.unlocked_tools,
         ):
             yield {"event": event.type, "data": event.model_dump_json()}
 

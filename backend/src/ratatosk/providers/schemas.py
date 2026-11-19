@@ -7,11 +7,16 @@ class ModelInfo(BaseModel):
     id: str
     provider: str
     display_name: str
+    icon: str | None = None
+    category: str = "general"
     tasks: list[str] = ["text-generation"]
     tier: str = "standard"
     context_window: int | None = None
+    input_price_per_1m: float | None = None
+    output_price_per_1m: float | None = None
     is_recommended: bool = False
     description: str | None = None
+    descriptions: dict[str, str] | None = None
     rank: int = 999
 
 
@@ -53,6 +58,7 @@ class AttachmentEvent(BaseModel):
     mime_type: str
     is_generated: bool = False
     external_uri: str | None = None
+    insert_offset: int | None = None
 
 
 class ImageProgressEvent(BaseModel):

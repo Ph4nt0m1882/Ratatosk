@@ -132,7 +132,13 @@ async def fetch_and_store_web_image(
     http = client or httpx.AsyncClient(
         timeout=6.0,
         follow_redirects=True,
-        headers={"User-Agent": "RatatoskBot/0.1 (+https://github.com/Ph4nt0m1882)"},
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,image/avif,image/webp,image/apng,*/*;q=0.8",
+        },
     )
 
     try:
@@ -243,10 +249,33 @@ def extract_grounding_sources(
             queries.append(q)
 
     raw_chunks = getattr(grounding_metadata, "grounding_chunks", None) or []
+    raw_supports = getattr(grounding_metadata, "grounding_supports", None) or []
+    anchor_by_chunk_idx: dict[int, str] = {}
+    for sup in raw_supports:
+        segment = (
+            getattr(sup, "segment", None)
+            if not isinstance(sup, dict)
+            else sup.get("segment")
+        )
+        indices = (
+            getattr(sup, "grounding_chunk_indices", None)
+            if not isinstance(sup, dict)
+            else sup.get("grounding_chunk_indices")
+        ) or []
+        seg_text = (
+            getattr(segment, "text", None)
+            if segment is not None and not isinstance(segment, dict)
+            else (segment.get("text") if isinstance(segment, dict) else None)
+        )
+        if seg_text and isinstance(seg_text, str) and seg_text.strip():
+            for c_idx in indices:
+                if isinstance(c_idx, int) and c_idx not in anchor_by_chunk_idx:
+                    anchor_by_chunk_idx[c_idx] = seg_text.strip()
+
     sources: list[dict[str, str]] = []
     seen_urls: set[str] = set()
 
-    for chunk in raw_chunks:
+    for idx, chunk in enumerate(raw_chunks):
         web = getattr(chunk, "web", None)
         if web is None and isinstance(chunk, dict):
             web = chunk.get("web")
@@ -265,6 +294,57 @@ def extract_grounding_sources(
         )
         if uri and uri not in seen_urls:
             seen_urls.add(uri)
-            sources.append({"title": title or uri, "url": uri})
+            entry: dict[str, str] = {"title": title or uri, "url": uri}
+            if idx in anchor_by_chunk_idx:
+                entry["anchor_text"] = anchor_by_chunk_idx[idx]
+            sources.append(entry)
 
     return queries, sources
+
+
+def find_grounding_insert_offset(
+    full_message: str,
+    src: dict[str, Any],
+    slot_index: int = 0,
+) -> int:
+    """Compute the inline character offset in `full_message` where a grounded web image belongs."""
+    if not full_message.strip():
+        return 0
+
+    anchor_text = str(src.get("anchor_text") or "").strip()
+    if anchor_text:
+        pos = full_message.find(anchor_text)
+        if pos != -1:
+            para_end = full_message.find("\n\n", pos + len(anchor_text))
+            return para_end if para_end != -1 else len(full_message)
+
+    # Split into paragraph spans `(start, end, text)`
+    spans: list[tuple[int, int, str]] = []
+    cursor = 0
+    for part in full_message.split("\n\n"):
+        start = cursor
+        end = start + len(part)
+        cursor = end + 2
+        stripped = part.strip()
+        if stripped and stripped != "---" and not stripped.startswith("#"):
+            spans.append((start, end, stripped))
+
+    if not spans:
+        return len(full_message)
+
+    # Prefer paragraphs after the opening introduction when multiple paragraphs exist
+    candidate_spans = spans[1:] if len(spans) > 1 else spans
+    title_words = {
+        w.lower()
+        for w in re.findall(r"\w{4,}", str(src.get("title") or ""))
+    }
+    if title_words:
+        best_span = max(
+            candidate_spans,
+            key=lambda sp: sum(1 for w in title_words if w in sp[2].lower()),
+        )
+        if sum(1 for w in title_words if w in best_span[2].lower()) > 0:
+            return best_span[1]
+
+    chosen_idx = min(slot_index, len(candidate_spans) - 1)
+    return candidate_spans[chosen_idx][1]

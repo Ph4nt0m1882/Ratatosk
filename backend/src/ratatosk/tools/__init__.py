@@ -6,6 +6,7 @@ from .afc import (
     extract_grounding_sources,
     extract_image_from_html,
     fetch_and_store_web_image,
+    find_grounding_insert_offset,
 )
 from .builtin import (
     BuiltinToolRegistry,
@@ -66,6 +67,7 @@ __all__ = [
     "extract_grounding_sources",
     "extract_image_from_html",
     "fetch_and_store_web_image",
+    "find_grounding_insert_offset",
     "get_active_mcp_servers",
     "manage_conversation",
     "open_mcp_client",

@@ -172,7 +172,10 @@ def build_generate_image_declaration(
 
     models_bullet_block = "\n".join(model_lines)
     tool_description = (
-        "Generate an image from a text prompt by delegating to a specialized text-to-image model.\n"
+        "Generate an image from a text prompt by delegating to a specialized text-to-image model. "
+        "When the tool returns `attachment_id` and `embed_markdown`, place "
+        "`![caption](attachment://<attachment_id>)` at the exact spot in your Markdown response "
+        "where the image should appear (e.g., after an introduction or inside the relevant section).\n"
         f"Available models (ordered by recommendation):\n{models_bullet_block}"
     )
     model_param_description = (
@@ -485,6 +488,11 @@ async def stream_google_delegated_image(
             "mime_type": final_mime,
             "width": width,
             "height": height,
+            "embed_markdown": f"![{desc[:80]}](attachment://{att.id})",
+            "placement_hint": (
+                f"Insert ![caption](attachment://{att.id}) at the exact position in your "
+                "Markdown response where this image should appear."
+            ),
             "usage": {
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,

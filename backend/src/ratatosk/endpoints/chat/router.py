@@ -18,13 +18,13 @@ router = APIRouter(
 
 
 @router.get("/models")
-async def get_models():
-    return await provider.list_models()
+async def get_models(refresh: bool = False):
+    return await provider.list_models(force_update=refresh)
 
 
 @router.get("/models/providers")
-async def get_models_by_id(provider_id: str | None = None):
-    models = await provider.list_models_by_provider()
+async def get_models_by_id(provider_id: str | None = None, refresh: bool = False):
+    models = await provider.list_models_by_provider(force_update=refresh)
 
     if provider_id:
         if provider_id not in models:

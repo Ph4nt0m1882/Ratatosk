@@ -330,5 +330,9 @@ async def execute_mcp_tool(
         output["structured_content"] = structured
     if texts:
         output["content"] = "\n".join(texts) if len(texts) > 1 else texts[0]
+    if attachments:
+        output["embed_markdown"] = [
+            f"![{a.filename}](attachment://{a.id})" for a in attachments
+        ]
 
     return ToolExecutionResult(output=output, attachments=attachments)

@@ -24,11 +24,16 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # if table system_prompts is avoid, re-apply default sys prompts
+    # Seed missing default system prompts without overwriting admin customizations
     async with async_session_maker() as session:
-        result = await session.execute(select(SystemPrompt.id).limit(1))
-        if result.scalar_one_or_none() is None:
-            session.add_all(get_default_prompts())
+        existing_names = set(
+            (await session.execute(select(SystemPrompt.name))).scalars().all()
+        )
+        missing_defaults = [
+            p for p in get_default_prompts() if p.name not in existing_names
+        ]
+        if missing_defaults:
+            session.add_all(missing_defaults)
             await session.commit()
 
         result = await session.execute(

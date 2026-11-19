@@ -1,0 +1,33 @@
+name: ratatosk_frontend
+description: "Ratatosk — Universal and self-hosted AI orchestrator frontend."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.3.0
+  shared_preferences: ^2.5.2
+  flutter_svg: ^2.0.17
+  file_picker: ^10.1.2
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - assets/brandings/ratatosk.svg
+    - assets/images/yggdrasil.webp
+    - assets/images/nidhoggr.webp

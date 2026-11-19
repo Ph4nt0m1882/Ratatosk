@@ -256,7 +256,12 @@ async def create_file(
     description: str = "",
     ctx: ToolContext | None = None,
 ) -> ToolExecutionResult:
-    """Create a downloadable text or code file attachment (`is_generated=True`) from UTF-8 content."""
+    """Create a downloadable text or code file attachment (`is_generated=True`) from UTF-8 content.
+
+    When the tool returns `attachment_id` and `embed_markdown`, place
+    `[filename](attachment://<attachment_id>)` at the exact position in your Markdown response
+    where the file card should appear.
+    """
     clean_filename = _sanitize_generated_filename(filename)
     guessed_mime, _ = mimetypes.guess_type(clean_filename)
     resolved_mime = (
@@ -320,6 +325,11 @@ async def create_file(
             "filename": clean_filename,
             "mime_type": resolved_mime,
             "size": file_size,
+            "embed_markdown": f"[{clean_filename}](attachment://{attachment.id})",
+            "placement_hint": (
+                f"Insert [{clean_filename}](attachment://{attachment.id}) at the exact "
+                "position in your Markdown response where this file should appear."
+            ),
         },
         attachments=[
             GeneratedAttachmentInfo(

@@ -1,0 +1,233 @@
+{
+  "@@locale": "en",
+  "appTitle": "Ratatosk",
+  "loginTagline": "Unified AI orchestrator on Yggdrasil",
+  "loginServerLabel": "Ratatosk Server",
+  "loginUsernameLabel": "Username",
+  "loginPasswordLabel": "Password",
+  "loginSubmitButton": "Sign in",
+  "loginOfflinePreview": "Explore interface offline",
+  "themeButtonLabel": "Theme: {themeName}",
+  "@themeButtonLabel": {
+    "placeholders": {
+      "themeName": {
+        "type": "String"
+      }
+    }
+  },
+  "languageLabel": "Language",
+  "languageEnglish": "English",
+  "languageFrench": "Français",
+  "sidebarSubtitle": "Chat notebook",
+  "sidebarCollapseTooltip": "Collapse notebook",
+  "sidebarNewChat": "New chat",
+  "sidebarMyChats": "My chats",
+  "sidebarEmptyChats": "No stories yet.\nAsk your first question!",
+  "sidebarRoleAdmin": "Guardian (Admin)",
+  "sidebarRoleMember": "Explorer",
+  "sidebarOpenSettings": "Open settings",
+  "sidebarLogout": "Sign out",
+  "topBarOpenChats": "Chats",
+  "topBarOpenChatsTooltip": "Open chat notebook",
+  "topBarThemeTooltip": "Change colors ({themeName})",
+  "@topBarThemeTooltip": {
+    "placeholders": {
+      "themeName": {
+        "type": "String"
+      }
+    }
+  },
+  "topBarSettingsTooltip": "Settings",
+  "welcomeMorning": "Good morning, {name}!",
+  "@welcomeMorning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "welcomeAfternoon": "Good afternoon, {name}!",
+  "@welcomeAfternoon": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "welcomeEvening": "Good evening, {name}!",
+  "@welcomeEvening": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "welcomeSubtitle": "What shall we discover, invent, or create today?",
+  "hubComingSoon": "{modeName} — Coming soon ({details})",
+  "@hubComingSoon": {
+    "placeholders": {
+      "modeName": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "hubDrawTitle": "Imagine a drawing",
+  "hubDrawSubtitle": "Dedicated studio for image creation, retouching, and manipulation",
+  "hubDrawDetails": "Image editor & studio",
+  "hubExploreTitle": "Explore the world",
+  "hubExploreSubtitle": "Interactive news map, research, and passion feed",
+  "hubExploreDetails": "World news map, research & passions",
+  "hubLearnTitle": "Learn & Write",
+  "hubLearnSubtitle": "NotebookLM-style studio: courses, emails, stories, and recipes",
+  "hubLearnDetails": "Source notebooks, learning & writing",
+  "hubPlayTitle": "Play",
+  "hubPlaySubtitle": "AI Tamagotchi, procedural dungeons, and Layton-style riddles",
+  "hubPlayDetails": "AI Tamagotchi, Mystery Dungeon & Riddles",
+  "welcomeResumeSection": "Pick up where you left off",
+  "composerHint": "Write a message, ask a question, or request a drawing...",
+  "composerAttach": "Attach",
+  "composerAttachTooltip": "Attach an image or file",
+  "composerSend": "Send",
+  "composerSending": "Working...",
+  "composerChangeModelTooltip": "Change model for this message",
+  "composerWebTooltip": "Choose web search mode",
+  "webOffTitle": "Offline",
+  "webOffDesc": "Answers using internal knowledge only",
+  "webStandardTitle": "Internet",
+  "webStandardDesc": "Searches the web when needed",
+  "webDeepTitle": "Deep Web",
+  "webDeepDesc": "Explores and cross-checks multiple sources",
+  "composerMemoryTooltip": "Choose conversation memory",
+  "memEcoTitle": "Eco Memory",
+  "memEcoDesc": "Keeps key context efficiently (recommended)",
+  "memAutoTitle": "Auto Memory",
+  "memAutoDesc": "Automatically adapts history to your prompt",
+  "memFullTitle": "Full Memory",
+  "memFullDesc": "Reads the entire conversation history",
+  "memFixedTitle": "Short Memory",
+  "memFixedDesc": "Only keeps the most recent messages",
+  "memNoneTitle": "No Memory",
+  "memNoneDesc": "Every message starts from a blank slate",
+  "msgInternalThinking": "Internal reasoning",
+  "msgCopyCode": "Copy",
+  "msgCopiedCode": "Copied",
+  "msgDownloadTooltip": "Download",
+  "modelSelectorTitle": "Select a model",
+  "modelSelectorRefreshTooltip": "Refresh from GitHub registry",
+  "modelSelectorSearchHint": "Search a model (Argon, Carbon, Hydrogen, Gemma...)",
+  "modelSelectorEmptySearch": "No model matches \"{query}\".",
+  "@modelSelectorEmptySearch": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "modelSelectorFavorites": "Favorites ({count})",
+  "@modelSelectorFavorites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelSelectorCount": "{count} models",
+  "@modelSelectorCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelSelectorRecommendedSection": "Recommended models",
+  "modelSelectorAllModels": "All models ({count})",
+  "@modelSelectorAllModels": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelSelectorRecommendedBadge": "Recommended",
+  "modelSelectorFreeLocal": "Free / Local",
+  "modelSelectorAddFav": "Add to favorites",
+  "modelSelectorRemoveFav": "Remove from favorites",
+  "settingsTitle": "Settings",
+  "settingsClose": "Close",
+  "settingsNavGeneralTitle": "My Space",
+  "settingsNavGeneralSub": "Profile, language & tools",
+  "settingsNavThemesTitle": "Colors & Themes",
+  "settingsNavThemesSub": "Change visual mood",
+  "settingsNavA11yTitle": "Visual Comfort",
+  "settingsNavA11ySub": "Colorblindness & contrast",
+  "settingsNavAdminTitle": "Administration",
+  "settingsNavAdminSub": "Server & System Prompts",
+  "themesSectionTitle": "Appearance Settings",
+  "themesSectionSubtitle": "Choose the application theme. \"HC\" themes provide high contrast.",
+  "themesSystemHeader": "System Themes",
+  "themesCustomHeader": "Custom Themes",
+  "themesCreateButton": "Create a theme",
+  "a11ySectionTitle": "Accessibility & Colorblindness",
+  "a11ySectionSubtitle": "High-legibility palettes calibrated for protanopia, deuteranopia, tritanopia, and achromatopsia.",
+  "a11yModesHeader": "Accessibility Themes (4 modes)",
+  "generalSectionTitle": "General Settings",
+  "generalSectionSubtitle": "Manage your language, profile, and personal MCP tool servers.",
+  "generalAccountHeader": "My Account",
+  "generalConnectedUser": "Signed in as",
+  "generalRoleLabel": "Role",
+  "generalRoleAdmin": "Administrator",
+  "generalRoleStandard": "Standard user",
+  "generalBackendServer": "Backend server",
+  "generalActiveTheme": "Active theme",
+  "generalUsernameField": "Username",
+  "generalEmailField": "Email (optional)",
+  "generalPasswordField": "New password (leave blank to keep)",
+  "generalUpdateButton": "Update",
+  "generalProfileUpdated": "Profile updated successfully.",
+  "generalMcpHeader": "MCP Servers ({count})",
+  "@generalMcpHeader": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generalMcpImportJson": "Import JSON",
+  "generalMcpAdd": "Add",
+  "generalMcpEmpty": "No MCP server configured. Add a server or import a JSON config to extend available tools.",
+  "adminRestricted": "Restricted to administrators.",
+  "adminSectionTitle": "Administration",
+  "adminSectionSubtitle": "System Prompts management (admin only), server settings, users, and global MCP.",
+  "adminTabPrompts": "System Prompts ({count})",
+  "@adminTabPrompts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminTabServer": "Server Settings",
+  "adminTabUsers": "Users ({count})",
+  "@adminTabUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminTabGlobalMcp": "Global MCP ({count})",
+  "@adminTabGlobalMcp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonRefresh": "Refresh"
+}

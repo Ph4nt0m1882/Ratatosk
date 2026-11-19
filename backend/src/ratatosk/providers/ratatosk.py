@@ -25,13 +25,16 @@ class RatatoskProvider(BaseProvider):
     def is_available(self) -> bool:
         return len(self._subproviders) > 0
 
-    async def list_models(self) -> list[ModelInfo]:
+    async def list_models(self, force_update: bool = False) -> list[ModelInfo]:
         """List all available models from the subproviders."""
         unified_list: list[ModelInfo] = []
         self._models_cache.clear()
 
         for sub_p in self._subproviders:
-            raw_models = await sub_p.list_models()
+            try:
+                raw_models = await sub_p.list_models(force_update=force_update)
+            except TypeError:
+                raw_models = await sub_p.list_models()
 
             models_iterable = (
                 raw_models.values() if isinstance(raw_models, dict) else raw_models
@@ -40,23 +43,39 @@ class RatatoskProvider(BaseProvider):
             for m in models_iterable:
                 raw_desc = m.get("description")
                 if isinstance(raw_desc, dict):
-                    desc_str = raw_desc.get("en") or raw_desc.get("fr")
+                    desc_map = {
+                        str(k): str(v)
+                        for k, v in raw_desc.items()
+                        if isinstance(v, str) and v.strip()
+                    }
+                    desc_str = desc_map.get("en") or desc_map.get("fr")
                 elif isinstance(raw_desc, str):
+                    desc_map = None
                     desc_str = raw_desc
                 else:
+                    desc_map = None
                     desc_str = None
+
+                pricing_dict = (
+                    m.get("pricing") if isinstance(m.get("pricing"), dict) else {}
+                )
 
                 model_info = ModelInfo(
                     id=m["id"],
                     provider=sub_p.provider_id,
                     display_name=m.get("display_name", m["id"]),
+                    icon=m.get("icon"),
+                    category=m.get("category", "general"),
                     tasks=m.get("tasks", ["text-generation"]),
                     tier=m.get("tier", "standard"),
                     context_window=m.get("limits", {}).get("context_window")
                     if "limits" in m
                     else m.get("context_window"),
+                    input_price_per_1m=pricing_dict.get("input_per_1m"),
+                    output_price_per_1m=pricing_dict.get("output_per_1m"),
                     is_recommended=m.get("is_recommended", False),
                     description=desc_str,
+                    descriptions=desc_map,
                     rank=int(m.get("rank", 999)),
                 )
                 unified_list.append(model_info)
@@ -64,9 +83,11 @@ class RatatoskProvider(BaseProvider):
 
         return unified_list
 
-    async def list_models_by_provider(self) -> dict[str, list[ModelInfo]]:
+    async def list_models_by_provider(
+        self, force_update: bool = False
+    ) -> dict[str, list[ModelInfo]]:
         """List all available models grouped by provider."""
-        all_models = await self.list_models()
+        all_models = await self.list_models(force_update=force_update)
         grouped: dict[str, list[ModelInfo]] = {}
         for m in all_models:
             grouped.setdefault(m.provider, []).append(m)

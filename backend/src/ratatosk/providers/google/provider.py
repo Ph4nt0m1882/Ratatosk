@@ -1,5 +1,8 @@
 import asyncio
+import base64
+from datetime import datetime, timezone
 import json
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -44,18 +47,27 @@ from ratatosk.tools import (
     MCPToolBinding,
     ToolContext,
     ToolExecutionResult,
-     build_generate_image_declaration,
+    build_generate_image_declaration,
     builtin_registry,
     discover_mcp_tools,
     execute_mcp_tool,
     extract_grounding_sources,
     fetch_and_store_web_image,
+    find_grounding_insert_offset,
     resolve_delegation_models,
     stream_google_delegated_image,
 )
 
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/Ph4nt0m1882/AI_registery/master/Google/google_ai_studio.json"
+GITHUB_REPO = "Ph4nt0m1882/AI_registery"
+GITHUB_FILE_PATH = "Google/google_ai_studio.json"
+GITHUB_COMMITS_URL = f"https://api.github.com/repos/{GITHUB_REPO}/commits"
+GITHUB_RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/{GITHUB_FILE_PATH}"
+REGISTRY_CHECK_TTL_SECONDS = 900.0  # Check GitHub at most every 15 minutes unless forced
 MAX_TOOL_ROUNDS = 5
+
+_registry_mem_cache: dict[str, Any] | None = None
+_registry_file_mtime: float = 0.0
+_registry_last_checked_ts: float = 0.0
 
 FULL_SEARCH_DIRECTIVE = (
     "<search_directive>\n"
@@ -67,26 +79,168 @@ FULL_SEARCH_DIRECTIVE = (
 )
 
 
-def get_google_models_registry(force_update: bool = False) -> dict:
-    cache_file = settings.app_dir / "google_ai_studio.json"
+def _parse_iso_timestamp(value: str | None) -> float:
+    if not value or not isinstance(value, str):
+        return 0.0
+    try:
+        normalized = value.strip()
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except Exception:
+        return 0.0
 
-    if cache_file.exists() and not force_update:
-        with open(cache_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+
+def _load_registry_meta(meta_file) -> dict[str, Any]:
+    if not meta_file.exists():
+        return {}
+    try:
+        with open(meta_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_registry_meta(meta_file, meta: dict[str, Any]) -> None:
+    try:
+        meta_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(meta_file, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def _check_github_file_commit(
+    known_etag: str | None,
+) -> tuple[str | None, str | None, str | None, bool]:
+    """Query GitHub Commits API for the latest commit modifying Google/google_ai_studio.json.
+
+    Returns (commit_sha, commit_date_iso, etag, is_not_modified).
+    """
+    headers = {"Accept": "application/vnd.github+json"}
+    if known_etag:
+        headers["If-None-Match"] = known_etag
+    try:
+        resp = httpx.get(
+            GITHUB_COMMITS_URL,
+            params={"path": GITHUB_FILE_PATH, "per_page": 1},
+            headers=headers,
+            timeout=5.0,
+        )
+        if resp.status_code == 304:
+            return None, None, known_etag, True
+        if resp.status_code == 200:
+            commits = resp.json()
+            new_etag = resp.headers.get("ETag") or known_etag
+            if isinstance(commits, list) and commits:
+                latest = commits[0]
+                sha = latest.get("sha")
+                commit_info = latest.get("commit", {})
+                committer_date = (
+                    commit_info.get("committer", {}).get("date")
+                    or commit_info.get("author", {}).get("date")
+                )
+                return sha, committer_date, new_etag, False
+    except Exception:
+        pass
+    return None, None, known_etag, False
+
+
+def get_google_models_registry(force_update: bool = False) -> dict:
+    global _registry_mem_cache, _registry_file_mtime, _registry_last_checked_ts
+
+    cache_file = settings.app_dir / "google_ai_studio.json"
+    meta_file = settings.app_dir / "google_ai_studio.meta.json"
+    local_data: dict | None = _registry_mem_cache
+
+    if cache_file.exists():
+        try:
+            current_mtime = cache_file.stat().st_mtime
+            if local_data is None or current_mtime != _registry_file_mtime:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    local_data = json.load(f)
+                _registry_mem_cache = local_data
+                _registry_file_mtime = current_mtime
+        except Exception:
+            local_data = _registry_mem_cache
+
+    now_mono = time.monotonic()
+    ttl_expired = (
+        _registry_last_checked_ts == 0.0
+        or (now_mono - _registry_last_checked_ts) >= REGISTRY_CHECK_TTL_SECONDS
+    )
+
+    if local_data is not None and not force_update and not ttl_expired:
+        return local_data
+
+    meta = _load_registry_meta(meta_file)
+    known_sha = meta.get("commit_sha")
+    known_etag = meta.get("etag")
+
+    latest_sha, remote_commit_date, new_etag, not_modified = _check_github_file_commit(
+        known_etag if not force_update else None
+    )
+
+    if local_data is not None:
+        local_ts = _parse_iso_timestamp(str(local_data.get("last_updated", "")))
+        if not_modified or (latest_sha and latest_sha == known_sha):
+            _registry_last_checked_ts = now_mono
+            meta["etag"] = new_etag
+            meta["checked_at"] = datetime.now(timezone.utc).isoformat()
+            _save_registry_meta(meta_file, meta)
+            return local_data
+
+        remote_commit_ts = _parse_iso_timestamp(remote_commit_date)
+        if local_ts > 0 and remote_commit_ts > 0 and local_ts > remote_commit_ts:
+            _registry_last_checked_ts = now_mono
+            if latest_sha:
+                meta["commit_sha"] = latest_sha
+                meta["commit_date"] = remote_commit_date
+                meta["etag"] = new_etag
+                meta["checked_at"] = datetime.now(timezone.utc).isoformat()
+                _save_registry_meta(meta_file, meta)
+            return local_data
+
+    download_url = (
+        f"https://raw.githubusercontent.com/{GITHUB_REPO}/{latest_sha}/{GITHUB_FILE_PATH}"
+        if latest_sha
+        else GITHUB_RAW_URL
+    )
 
     try:
-        response = httpx.get(GITHUB_RAW_URL, timeout=10.0)
+        response = httpx.get(download_url, timeout=10.0)
         response.raise_for_status()
         data = response.json()
+        _registry_last_checked_ts = now_mono
 
+        if local_data is not None:
+            local_ts = _parse_iso_timestamp(str(local_data.get("last_updated", "")))
+            remote_ts = _parse_iso_timestamp(str(data.get("last_updated", "")))
+            if local_ts > 0 and remote_ts > 0 and local_ts > remote_ts:
+                return local_data
+
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
         with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
+        _registry_mem_cache = data
+        _registry_file_mtime = cache_file.stat().st_mtime
+        if latest_sha:
+            meta["commit_sha"] = latest_sha
+            meta["commit_date"] = remote_commit_date
+            meta["etag"] = new_etag
+        meta["checked_at"] = datetime.now(timezone.utc).isoformat()
+        _save_registry_meta(meta_file, meta)
+
         return data
-    except httpx.RequestError as e:
-        if cache_file.exists():
-            with open(cache_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+    except (httpx.HTTPError, ValueError) as e:
+        _registry_last_checked_ts = now_mono
+        if local_data is not None:
+            return local_data
         raise RuntimeError(f"Failed to fetch Google AI Studio models registry: {e}")
 
 
@@ -103,9 +257,19 @@ def _to_google_parts(raw_parts: list[dict] | None, fallback_content: str) -> lis
         if p_type in ("thinking", "thought") or p.get("thought") is True:
             continue
         if p_type == "tool_call" and "name" in p:
-            google_parts.append(
-                {"function_call": {"name": p["name"], "args": p.get("args", {})}}
-            )
+            sig_b64 = p.get("thought_signature_b64")
+            if sig_b64:
+                google_parts.append(
+                    {
+                        "function_call": {
+                            "name": p["name"],
+                            "args": p.get("args", {}),
+                        },
+                        "thought_signature": base64.b64decode(sig_b64),
+                    }
+                )
+        elif p_type == "tool_response":
+            continue
         elif "function_call" in p:
             google_parts.append({"function_call": p["function_call"]})
         elif "function_response" in p:
@@ -205,8 +369,12 @@ class GoogleProvider(BaseProvider):
     def is_available(self) -> bool:
         return bool(settings.google_api_key)
 
-    async def list_models(self) -> dict[str, Any] | list[dict[str, Any]]:
-        registry = get_google_models_registry()
+    async def list_models(
+        self, force_update: bool = False
+    ) -> dict[str, Any] | list[dict[str, Any]]:
+        registry = await asyncio.to_thread(
+            get_google_models_registry, force_update
+        )
         return registry.get("models", {})
 
     def _adapt_context_for_google(
@@ -331,9 +499,27 @@ class GoogleProvider(BaseProvider):
             mcp_bindings: dict[str, MCPToolBinding] = {}
             image_candidates: list[DelegationModelCandidate] = []
             models_catalog = await self.list_models()
-            if not isinstance(search_mode, NoSearchMode):
-                tools_cfg.extend([{"google_search": {}}, {"url_context": {}}])
-            if enable_builtin_tools:
+            model_entry = (
+                models_catalog.get(model, {})
+                if isinstance(models_catalog, dict)
+                else {}
+            )
+            is_gemma = (
+                model.lower().startswith("gemma")
+                or model_entry.get("family") == "gemma"
+            )
+            supports_fn_calling = bool(
+                model_entry.get("features", {}).get("function_calling", True)
+            )
+            has_server_side_tools = not isinstance(search_mode, NoSearchMode)
+            has_fn_declarations = False
+
+            if has_server_side_tools:
+                tools_cfg.append({"google_search": {}})
+                if not is_gemma:
+                    tools_cfg.append({"url_context": {}})
+
+            if enable_builtin_tools and supports_fn_calling:
                 declarations = builtin_registry.get_google_declarations(
                     unlocked_tools, is_admin=is_admin
                 )
@@ -350,8 +536,14 @@ class GoogleProvider(BaseProvider):
                     declarations.append(image_decl)
                 if declarations:
                     tools_cfg.append({"function_declarations": declarations})
+                    has_fn_declarations = True
+
             if tools_cfg:
                 config["tools"] = tools_cfg
+            if has_server_side_tools and has_fn_declarations:
+                config["tool_config"] = {
+                    "include_server_side_tool_invocations": True
+                }
 
             full_thoughts = ""
             full_message = ""
@@ -374,7 +566,9 @@ class GoogleProvider(BaseProvider):
                     config=config,
                 )
 
-                pending_builtin_calls: list[tuple[str | None, str, dict[str, Any]]] = []
+                pending_builtin_calls: list[
+                    tuple[str | None, str, dict[str, Any], Any]
+                ] = []
                 round_last_chunk = None
 
                 async for chunk in response:
@@ -416,14 +610,27 @@ class GoogleProvider(BaseProvider):
                                 call_id = getattr(fn_call, "id", None)
                                 call_name = getattr(fn_call, "name", "")
                                 call_args = dict(getattr(fn_call, "args", None) or {})
-                                tool_calls_saved.append(
-                                    {
-                                        "type": "tool_call",
-                                        "id": call_id,
-                                        "name": call_name,
-                                        "args": call_args,
-                                    }
+                                thought_sig = getattr(
+                                    part, "thought_signature", None
                                 )
+                                sig_b64: str | None = None
+                                if isinstance(thought_sig, bytes):
+                                    sig_b64 = base64.b64encode(thought_sig).decode(
+                                        "ascii"
+                                    )
+                                elif isinstance(thought_sig, str):
+                                    sig_b64 = thought_sig
+
+                                saved_call: dict[str, Any] = {
+                                    "type": "tool_call",
+                                    "id": call_id,
+                                    "name": call_name,
+                                    "args": call_args,
+                                }
+                                if sig_b64:
+                                    saved_call["thought_signature_b64"] = sig_b64
+                                tool_calls_saved.append(saved_call)
+
                                 yield ToolCallEvent(
                                     id=call_id, name=call_name, args=call_args
                                 )
@@ -436,7 +643,12 @@ class GoogleProvider(BaseProvider):
                                     )
                                 ):
                                     pending_builtin_calls.append(
-                                        (call_id, call_name, call_args)
+                                        (
+                                            call_id,
+                                            call_name,
+                                            call_args,
+                                            thought_sig,
+                                        )
                                     )
                             elif part_text:
                                 full_message += part_text
@@ -461,10 +673,18 @@ class GoogleProvider(BaseProvider):
                 model_call_parts: list[dict[str, Any]] = []
                 tool_response_parts: list[dict[str, Any]] = []
 
-                for call_id, call_name, call_args in pending_builtin_calls:
-                    model_call_parts.append(
-                        {"function_call": {"name": call_name, "args": call_args}}
-                    )
+                for (
+                    call_id,
+                    call_name,
+                    call_args,
+                    thought_sig,
+                ) in pending_builtin_calls:
+                    call_part: dict[str, Any] = {
+                        "function_call": {"name": call_name, "args": call_args}
+                    }
+                    if thought_sig is not None:
+                        call_part["thought_signature"] = thought_sig
+                    model_call_parts.append(call_part)
                     if call_name == GENERATE_IMAGE_TOOL_NAME and image_candidates:
                         exec_res = ToolExecutionResult(
                             output={"error": "Image generation returned no result."}
@@ -474,6 +694,7 @@ class GoogleProvider(BaseProvider):
                             candidates=image_candidates,
                             args=call_args,
                             ctx=tool_ctx,
+                            step_delay_seconds=0.28,
                         ):
                             if isinstance(item, ImageProgressEvent):
                                 yield item
@@ -513,8 +734,14 @@ class GoogleProvider(BaseProvider):
                     )
 
                     for att_info in exec_res.attachments:
+                        stream_offset = len(full_message)
                         assistant_attachments.append(
-                            {"id": att_info.id, "filename": att_info.filename}
+                            {
+                                "id": att_info.id,
+                                "filename": att_info.filename,
+                                "mime_type": att_info.mime_type,
+                                "insert_offset": stream_offset,
+                            }
                         )
                         yield AttachmentEvent(
                             id=att_info.id,
@@ -522,6 +749,7 @@ class GoogleProvider(BaseProvider):
                             mime_type=att_info.mime_type,
                             is_generated=att_info.is_generated,
                             external_uri=att_info.external_uri,
+                            insert_offset=stream_offset,
                         )
 
                     tool_response_parts.append(
@@ -540,7 +768,9 @@ class GoogleProvider(BaseProvider):
             yield ErrorEvent(message=str(exc))
             return
 
-        if web_sources and isinstance(search_mode, FullSearchMode):
+        if web_sources and not isinstance(search_mode, NoSearchMode):
+            max_images = 2 if isinstance(search_mode, FullSearchMode) else 1
+            candidate_web_sources = web_sources[:3]
             tasks = [
                 fetch_and_store_web_image(
                     src["url"],
@@ -548,25 +778,41 @@ class GoogleProvider(BaseProvider):
                     title=src["title"],
                     source_page_url=src["url"],
                 )
-                for src in web_sources[:2]
+                for src in candidate_web_sources
             ]
             fetched_atts = await asyncio.gather(*tasks)
-            for idx, att in enumerate(fetched_atts, start=1):
+            kept = 0
+            for src, att in zip(candidate_web_sources, fetched_atts):
                 if att is not None:
+                    kept += 1
                     ext = (
                         att.mime_type.split("/", 1)[-1].split("+", 1)[0]
                         if "/" in att.mime_type
                         else "png"
                     )
-                    fname = f"web_image_{idx}.{ext}"
-                    assistant_attachments.append({"id": att.id, "filename": fname})
+                    fname = f"web_image_{kept}.{ext}"
+                    offset = find_grounding_insert_offset(
+                        full_message, src, slot_index=kept - 1
+                    )
+                    assistant_attachments.append(
+                        {
+                            "id": att.id,
+                            "filename": fname,
+                            "mime_type": att.mime_type,
+                            "insert_offset": offset,
+                            "label": src.get("title") or fname,
+                        }
+                    )
                     yield AttachmentEvent(
                         id=att.id,
                         filename=fname,
                         mime_type=att.mime_type,
                         is_generated=False,
                         external_uri=att.external_uri,
+                        insert_offset=offset,
                     )
+                    if kept >= max_images:
+                        break
 
         source_items: list[SourceItem] = list(attachment_sources)
         for src in web_sources:
@@ -617,6 +863,46 @@ class GoogleProvider(BaseProvider):
                 attachments=user_msg.get("attachments"),
             )
 
+            persisted_message = full_message
+            unreferenced_atts = [
+                a
+                for a in assistant_attachments
+                if f"attachment://{a['id']}" not in persisted_message
+            ]
+            # Sort descending by offset so splicing earlier attachments does not shift later offsets
+            for att_entry in sorted(
+                unreferenced_atts,
+                key=lambda x: int(x.get("insert_offset") or 0),
+                reverse=True,
+            ):
+                aid = att_entry["id"]
+                label = str(att_entry.get("label") or att_entry.get("filename") or "attachment")
+                is_img = str(att_entry.get("mime_type") or "").startswith("image/")
+                tag = (
+                    f"![{label}](attachment://{aid})"
+                    if is_img
+                    else f"[{label}](attachment://{aid})"
+                )
+                raw_off = int(att_entry.get("insert_offset") or 0)
+                if raw_off <= 0 and persisted_message:
+                    first_break = persisted_message.find("\n\n")
+                    raw_off = (
+                        first_break
+                        if first_break != -1
+                        else len(persisted_message)
+                    )
+                off = max(0, min(raw_off, len(persisted_message)))
+                before = persisted_message[:off].rstrip()
+                after = persisted_message[off:].lstrip()
+                if before and after:
+                    persisted_message = f"{before}\n\n{tag}\n\n{after}"
+                elif before:
+                    persisted_message = f"{before}\n\n{tag}"
+                elif after:
+                    persisted_message = f"{tag}\n\n{after}"
+                else:
+                    persisted_message = tag
+
             assistant_parts: list[dict[str, Any]] = []
             if full_thoughts:
                 assistant_parts.append({"type": "thinking", "text": full_thoughts})
@@ -630,14 +916,14 @@ class GoogleProvider(BaseProvider):
                         ],
                     }
                 )
-            assistant_parts.append({"type": "text", "text": full_message})
+            assistant_parts.append({"type": "text", "text": persisted_message})
 
             _, assistant_msg_id = await save_message(
                 user_id=user_id,
                 conversation_id=conversation_id,
                 role="assistant",
                 model=resolved_model,
-                content=full_message,
+                content=persisted_message,
                 parts=assistant_parts,
                 token_count=total_output_tokens,
                 cost=output_cost,
